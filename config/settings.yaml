@@ -1,0 +1,52 @@
+# ============================================================
+# Smart Count Tramway — Central Configuration
+# Edit this file to tune the system without touching source code
+# ============================================================
+
+camera:
+  source: 0                   # 0 = webcam, or path to video file, or RTSP URL
+  width: 1280
+  height: 720
+  fps: 30
+
+detection:
+  model_path: "models/yolov8n.pt"   # swap to yolov8s.pt / yolov8m.pt for better accuracy
+  confidence_threshold: 0.45        # lower = more detections, higher = fewer false positives
+  iou_threshold: 0.45               # Non-Max Suppression IoU
+  device: "cpu"                     # "cpu", "cuda", or "mps" (Apple Silicon)
+  target_classes: [0]               # COCO class 0 = person
+
+tracking:
+  max_age: 30                       # Frames to keep a lost track alive
+  n_init: 3                         # Detections needed before confirming a track
+  max_cosine_distance: 0.4          # Appearance similarity threshold
+  nn_budget: 100                    # Max stored appearance embeddings per track
+
+counting:
+  # Virtual counting line defined as fraction of frame height [0.0 - 1.0]
+  # Passengers crossing top->bottom  = EXIT (leaving tram)
+  # Passengers crossing bottom->top  = ENTRY (boarding tram)
+  line_position: 0.5                # 0.5 = middle of frame
+  direction_sensitivity: 15         # Pixels of centroid movement to confirm direction
+
+anonymization:
+  enabled: true
+  method: "blur"                    # "blur" or "pixelate"
+  blur_strength: 25                 # Kernel size for Gaussian blur (must be odd)
+  face_confidence: 0.6              # Minimum confidence to blur a face
+
+database:
+  path: "data/db/tramway_counts.db"
+
+logging:
+  level: "INFO"                     # DEBUG / INFO / WARNING / ERROR
+  log_file: "data/logs/smart_count.log"
+
+stop_info:
+  current_stop: "Kharouba"          # Override at runtime with --stop flag
+  all_stops:
+    - "Kharouba"
+    - "Salamandre"
+    - "Gare SNTF"
+    - "Nouvelle Gare Routière"
+    - "Centre Ville"
