@@ -31,7 +31,7 @@ Camera Feed → Face Blur (Privacy) → YOLOv8 Detection → DeepSORT Tracking
 | Backend | Python 3.12, PyTorch 2.10, OpenCV 4.10 |
 | Dashboard | Streamlit 1.45 + Plotly 5.24 |
 | Storage | SQLite (built-in, no server needed) |
-| Hardware | Raspberry Pi 4 / Jetson Nano |
+| Hardware |  / Jetson Nano |
 
 ---
 
