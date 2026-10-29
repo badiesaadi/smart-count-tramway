@@ -1,212 +1,190 @@
 # 🚋 Smart Count Tramway
-**Edge-AI Automatic Passenger Counting System**  
+**Edge-AI Automatic Passenger Counting & Re-Identification System**  
 *PFE Start-up Project — SETRAM Mostaganem*
 
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.10-red.svg)](https://pytorch.org/)
+[![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-green.svg)](https://github.com/ultralytics/ultralytics)
+[![Streamlit](https://img.shields.io/badge/Dashboard-Streamlit-FF4B4B.svg)](https://streamlit.io/)
+[![CI](https://github.com/badiesaadi/smart-count-tramway/actions/workflows/ci.yml/badge.svg)](https://github.com/badiesaadi/smart-count-tramway/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ---
 
-## Overview
+## 📌 Overview
 
-Smart Count Tramway is an embedded AI system that uses existing tram cameras to automatically count passenger entries and exits at each stop, with **≥ 95% accuracy** and **< 100ms** per frame.
+Smart Count Tramway is an embedded Edge-AI computer vision system that utilizes existing onboard tram cameras to automatically count passenger entries and exits at each station with **≥ 95% accuracy** and **< 100ms** latency per frame.
 
-Built for the **Mostaganem Tramway** (14 km network), it addresses peak-hour management, tourist-season frequency adjustment, and fare evasion monitoring — without adding ground personnel.
+Built for the **Mostaganem Tramway** (14 km network, 24 stations), it addresses peak-hour congestion, tourist-season frequency adjustment, and fare evasion monitoring — all without requiring additional ground personnel.
 
 ---
 
-## Architecture
+## 🏛️ Architecture
 
 ```
-Camera Feed → Face Blur (Privacy) → YOLOv8 Detection → DeepSORT Tracking
-     → Virtual Line Crossing → SQLite Storage → Streamlit Dashboard
+┌──────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
+│ Camera Feed  │ ──> │ Edge Face Blurring  │ ──> │  YOLOv8 Detection   │
+│ (RTSP / USB) │     │ (On-device Privacy) │     │   (Person Class)    │
+└──────────────┘     └─────────────────────┘     └──────────┬──────────┘
+                                                            │
+┌─────────────────────────┐     ┌─────────────────────┐     │
+│   Streamlit Dashboard   │ <── │   SQLite Database   │ <───┼────────────────┐
+│   (Real-time Metrics)   │     │ (WAL Mode, Threaded)│     │                │
+└─────────────────────────┘     └─────────────────────┘     ▼                ▼
+                                                     ┌─────────────┐  ┌─────────────┐
+                                                     │  DeepSORT   │  │ Global ReID │
+                                                     │  Tracking   │  │(MobileNetV2)│
+                                                     └──────┬──────┘  └──────┬──────┘
+                                                            │                │
+                                                            ▼                ▼
+                                                     ┌──────────────────────────────┐
+                                                     │   Virtual Line Crossing &    │
+                                                     │ Deduplicated Station Counter │
+                                                     └──────────────────────────────┘
 ```
 
 ---
 
-## Tech Stack
+## ⚡ Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Detection | YOLOv8 (Ultralytics 8.4+) |
-| Tracking | DeepSORT (deep-sort-realtime 1.3.2) |
-| Privacy | OpenCV Haar Cascade (Gaussian blur 99×99) |
-| Backend | Python 3.12, PyTorch 2.10, OpenCV 4.10 |
-| Dashboard | Streamlit 1.45 + Plotly 5.24 |
-| Storage | SQLite (built-in, no server needed) |
-| Hardware |  / Jetson Nano |
+| Layer | Technology | Details |
+|---|---|---|
+| **Detection** | YOLOv8 (Ultralytics 8.4+) | Person detection (COCO class 0), FP16 acceleration |
+| **Tracking** | DeepSORT (`deep-sort-realtime` 1.3.2) | Kalman filter + Hungarian algorithm for intra-camera tracking |
+| **Re-Identification** | MobileNetV2 Feature Extractor | 1280-D L2 appearance embeddings & cosine similarity |
+| **Privacy Compliance** | OpenCV Haar Cascade / Gaussian Blur | Kernel 99×99 on-device face blurring prior to storage |
+| **Backend & Storage** | Python 3.12, PyTorch, SQLite (WAL) | Zero-dependency local storage with ACID compliance |
+| **Dashboard** | Streamlit 1.45 + Plotly 5.24 | Real-time passenger throughput and station heatmaps |
+| **Target Hardware** | Edge Devices | Raspberry Pi 4 / NVIDIA Jetson Nano / x86_64 Edge PC |
 
 ---
 
-## System Requirements
+## ⚙️ System Requirements
 
 | Requirement | Details |
-|-------------|---------|
-| **Python** | 3.12 exactly — 3.13/3.14 not supported by PyTorch |
-| **OS** | Windows 10/11 (dev), Linux (Raspberry Pi / Jetson) |
-| **RAM** | 4 GB minimum, 8 GB recommended |
-| **Visual C++** | Microsoft Visual C++ Redistributable 2022 (Windows only) |
+|---|---|
+| **Python** | 3.12 exactly — *(PyTorch & pandas require Python 3.12 for binary wheels)* |
+| **OS** | Linux (Raspberry Pi OS / JetPack Ubuntu), Windows 10/11 |
+| **RAM** | 4 GB minimum (Raspberry Pi 4), 8 GB recommended |
+| **Visual C++** | Microsoft Visual C++ Redistributable 2022 *(Windows only)* |
 
 ---
 
-## Installation
+## 🚀 Installation & Setup
 
-### Step 1 — Install Python 3.12
-Download and install Python 3.12 (check "Add to PATH" during install):  
-👉 https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe
-
-### Step 2 — Install Visual C++ Redistributable *(Windows only)*
-Required by PyTorch DLLs:  
-👉 https://aka.ms/vs/17/release/vc_redist.x64.exe
-
-### Step 3 — Clone the repo
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/badiesaadi/smart-count-tramway.git
 cd smart-count-tramway
 ```
 
-### Step 4 — Install dependencies
-
-**Windows:**
+### 2. Install Dependencies
 ```bash
+# Windows
 py -3.12 -m pip install -r requirements.txt
+
+# Linux / Raspberry Pi / Jetson Nano
+python3.12 -m pip install -r requirements.txt
 ```
 
-**Linux / Raspberry Pi / Jetson Nano:**
-```bash
-pip install -r requirements.txt
-```
-
-### Step 5 — Patch DeepSORT *(Python 3.12+ fix)*
-`deep-sort-realtime` uses a deprecated API removed in Python 3.12. Run the included patch script once:
-
+### 3. Patch DeepSORT *(Python 3.12 Compatibility)*
+`deep-sort-realtime` relies on `pkg_resources` which was updated in Python 3.12. Run the patch once:
 ```bash
 py -3.12 patch_deepsort.py
+# Expected output: Patched OK
 ```
 
-Expected output: `Patched OK`
-
-### Step 6 — Download YOLOv8 weights
-
-**Windows:**
+### 4. Download YOLOv8 Weights
 ```bash
 py -3.12 -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
-move yolov8n.pt models\
-```
-
-**Linux:**
-```bash
-python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
+mkdir -p models
 mv yolov8n.pt models/
 ```
 
 ---
 
-## Usage
+## 💻 Usage
 
-### Run the counter
-
-**Windows:**
+### Running the Edge Counter
 ```bash
-# Test with a local video file
+# Local test video
 py -3.12 main.py --source data/videos/test.mp4 --stop Kharouba
 
-# Live RTSP camera stream
-py -3.12 main.py --source rtsp://192.168.1.100:554/stream1 --stop Salamandre
+# Live RTSP IP Camera stream
+py -3.12 main.py --source rtsp://192.168.1.100:554/stream1 --stop Salamandre --headless
 
-# Webcam (index 0)
-py -3.12 main.py --source 0 --stop "Gare SNTF"
+# Webcam with debug overlays
+py -3.12 main.py --source 0 --stop "Gare SNTF" --debug
 
-# Headless mode — no display window (for Pi/Jetson)
-py -3.12 main.py --source 0 --stop Kharouba --headless
-
-# Debug mode — show raw detection boxes
-py -3.12 main.py --source 0 --stop Kharouba --debug
+# High-performance headless mode without ReID
+py -3.12 main.py --source 0 --stop Kharouba --headless --no-reid
 ```
 
-**Linux / Raspberry Pi:**
-```bash
-python main.py --source /dev/video0 --stop Kharouba --headless
-```
-
-### Launch the dashboard
-
-**Windows:**
+### Launching the Monitoring Dashboard
 ```bash
 py -3.12 -m streamlit run dashboard/app.py
 ```
-
-**Linux:**
-```bash
-streamlit run dashboard/app.py
-```
-
-Open your browser at **http://localhost:8501**
+Access the dashboard at `http://localhost:8501`.
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 smart-count-tramway/
-├── main.py                  # Main execution loop
-├── requirements.txt         # Python 3.12 compatible dependencies
-├── patch_deepsort.py        # One-time fix for DeepSORT on Python 3.12+
-├── src/
-│   ├── detection.py         # YOLOv8 inference + at-the-edge face blurring
-│   ├── tracking.py          # DeepSORT + virtual line crossing logic
-│   └── database.py          # SQLite schema and operations
-├── dashboard/
-│   └── app.py               # Streamlit real-time dashboard
-├── models/                  # YOLOv8 weights (.pt files — not tracked by git)
-├── data/
-│   └── videos/              # Test footage (not tracked by git)
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # Automated CI pipeline (linting, tests)
 ├── config/
-│   └── settings.yaml        # Configurable parameters
-└── scripts/
-    └── push_to_github.py    # One-click GitHub deployment utility
+│   └── settings.yaml          # Configurable parameters (camera, model, lines)
+├── dashboard/
+│   ├── app.py                 # Streamlit real-time monitoring dashboard
+│   └── __init__.py
+├── data/                      # SQLite databases, test videos, and logs
+├── docs/
+│   └── HARDWARE.md            # Hardware benchmarks and Jetson/RPi pinouts
+├── models/                    # YOLOv8 weight files (.pt)
+├── scripts/
+│   └── push_updates.py        # Safe Git sync utility
+├── src/
+│   ├── __init__.py
+│   ├── config_loader.py       # YAML configuration parser with CLI overrides
+│   ├── database.py            # SQLite schema, WAL mode, and thread-safe CRUD
+│   ├── detection.py           # YOLOv8 inference + on-device face anonymization
+│   ├── reid.py                # MobileNetV2 appearance extractor & deduplication
+│   └── tracking.py            # DeepSORT tracking + virtual line crossing logic
+├── tests/                     # Automated pytest test suite
+│   ├── test_config.py
+│   ├── test_database.py
+│   ├── test_reid.py
+│   └── test_tracking.py
+├── Dockerfile                 # Multi-stage edge-optimized container
+├── docker-compose.yml         # Compose stack for worker + dashboard
+├── main.py                    # Master execution loop
+├── patch_deepsort.py          # Python 3.12 compatibility patch
+├── requirements.txt           # Verified Python 3.12 dependencies
+└── TEAM_GUIDE.md              # Team collaboration guidelines
 ```
 
 ---
 
-## Performance Targets
+## 🔒 Privacy-by-Design
 
-| Metric | Target | Implementation |
-|--------|--------|---------------|
-| Accuracy | ≥ 95% | YOLOv8n + DeepSORT n_init=3 |
-| Processing speed | < 100ms/frame | FP16 inference, CPU fallback |
-| Privacy compliance | At-the-edge | Face blur applied before any storage |
+All face data is anonymized **on-device at the edge** before any storage or transmission using Gaussian blur (kernel 99×99) applied immediately after capture. Raw face pixels never leave memory, strictly satisfying the privacy requirements defined in §3.2 of the Cahier des Charges.
 
 ---
 
-## Privacy
+## 🧪 Testing
 
-All face data is anonymised **on-device** before any storage or transmission, using Gaussian blur (kernel 99×99) applied immediately after capture. Raw face pixels never leave the device. This satisfies the anonymisation requirement defined in §3.2 of the Cahier des Charges.
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| `pip` not recognised on Windows | Use `py -3.12 -m pip install ...` |
-| `torch` install fails | Make sure you are on Python 3.12, not 3.13/3.14 |
-| `pandas` build error (vswhere) | Python version too new — install Python 3.12 |
-| `DLL initialization failed` (c10.dll) | Install Visual C++ Redistributable 2022 |
-| `No module named pkg_resources` | Run `py -3.12 patch_deepsort.py` |
-| `resource_filename` AttributeError | Run `py -3.12 patch_deepsort.py` |
-| `streamlit` not recognised | Use `py -3.12 -m streamlit run ...` or add Python312\Scripts to PATH |
-| SSL certificate error on Windows | Already patched in `scripts/push_to_github.py` |
-| Camera not opening | Check `--source` index (try 0, 1) or verify RTSP URL |
+Run the test suite with `pytest`:
+```bash
+py -3.12 -m pytest -v
+```
 
 ---
 
-## Academic Defense
+## 🎓 Academic Defense
 
-This project is the **PFE (Projet de Fin d'Études)** for the Start-up track at the University of Mostaganem.
+This project serves as the **PFE (Projet de Fin d'Études)** for the Start-up track at the University of Mostaganem in partnership with **SETRAM Mostaganem**.
 
-Deliverables:
-- Functional prototype (passenger counting application + monitoring interface)
-- Business Plan + Pitch Deck (market study for the 14 km Mostaganem network)
-- Memoire de PFE
-
----
-
-*SETRAM Mostaganem · Universite de Mostaganem · 2024-2025*
+*SETRAM Mostaganem · Université de Mostaganem · 2024–2026*
