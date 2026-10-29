@@ -127,3 +127,4 @@ def load_config(config_path: Optional[str | Path] = None) -> Config:
         logger.debug(f"[Config] Configuration file not found at {path}, using defaults.")
 
     return Config(merged)
+
